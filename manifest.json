@@ -1,7 +1,1 @@
-{
-  "name": "Catálogo Precios",
-  "short_name": "Catálogo",
-  "start_url": "./",
-  "display": "standalone",
-  "icons": []
-}
+{"name": "Catálogo precios", "short_name": "Catálogo", "start_url": "./", "display": "standalone", "icons": []}
