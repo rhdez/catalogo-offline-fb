@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Catálogo offline</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<style>
+body{font-family:Arial, sans-serif;margin:1rem;}
+input,button{padding:0.6rem;font-size:1rem;}
+#search{width:68%;}
+#scanBtn{width:30%;}
+table{width:100%;border-collapse:collapse;margin-top:1rem;}
+th,td{border:1px solid #ccc;padding:0.4rem;font-size:0.85rem;}
+th{background:#f0f0f0;}
+#scanner{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000a;flex-direction:column;align-items:center;justify-content:center;}
+#interactive{width:90%;max-width:480px;border:4px solid #fff;}
+</style>
+</head>
+<body>
+<h2>Catálogo de Precios (Offline)</h2>
+<div>
+  <input id="search" placeholder="Busca nombre o código…">
+  <button id="scanBtn">Escanear</button>
+</div>
+<table id="tbl">
+  <thead>
+    <tr><th>Producto</th><th>Código</th><th>Min</th><th>Máx</th><th>Costo último</th></tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<div id="scanner">
+  <div id="interactive" class="viewport"></div>
+  <button id="closeBtn" style="margin-top:1rem;">Cerrar</button>
+</div>
+
+<!-- Quagga2 desde CDN, se cacheará la primera vez -->
+<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
+
+<script type="module">
+import productos from './productos.json' assert { type:'json' };
+const data = productos;
+const tbody = document.querySelector('#tbl tbody');
+const render = list => tbody.innerHTML = list.map(r=>`
+  <tr><td>${r.prod}</td><td>${r.cod}</td><td>${r.price_min.toFixed(2)}</td><td>${r.price_max.toFixed(2)}</td><td>${r.last_cost.toFixed(2)}</td></tr>`).join('');
+render(data);
+
+const search = document.getElementById('search');
+search.oninput = () => {
+  const q = search.value.toLowerCase();
+  render(data.filter(r => r.prod.toLowerCase().includes(q) || r.cod.includes(q)));
+};
+
+// ------ Escáner ------
+const scanBtn = document.getElementById('scanBtn');
+const scanner = document.getElementById('scanner');
+const closeBtn = document.getElementById('closeBtn');
+
+scanBtn.onclick = () => {
+  scanner.style.display = 'flex';
+  Quagga.init({
+    inputStream: { type:'LiveStream', target:document.querySelector('#interactive'), constraints:{ facingMode:'environment' } },
+    decoder: { readers:['ean_reader','ean_8_reader','code_128_reader'] }
+  }, err => { if(err){ alert(err); return;} Quagga.start(); });
+};
+
+closeBtn.onclick = () => { Quagga.stop(); scanner.style.display = 'none'; };
+
+Quagga.onDetected(res => {
+  const code = res.codeResult.code;
+  search.value = code;
+  render(data.filter(r => r.cod.includes(code)));
+  Quagga.stop(); scanner.style.display = 'none';
+});
+</script>
+
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+
+<p style="font-size:0.8rem;">Abre una vez con internet para cachear; luego funciona sin conexión. Añade a inicio en Android.</p>
+</body>
+</html>
